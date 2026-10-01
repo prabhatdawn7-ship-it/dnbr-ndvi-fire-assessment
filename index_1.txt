@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Burn Severity and Post-Fire Vegetation Recovery Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+  --bg:#EEF1EF; --surface:#FFFFFF; --surface-2:#E4EAE7; --ink:#16201C; --muted:#52615B;
+  --line:#C6D0CB; --accent:#1F6A4D; --accent-ink:#FFFFFF; --ember:#C2401A; --focus:#1D5FD1;
+  --ui:'Bricolage Grotesque','Segoe UI',system-ui,-apple-system,sans-serif;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F1513; --surface:#172019; --surface-2:#1F2B24; --ink:#E7EDE9; --muted:#97A79F;
+    --line:#2B3932; --accent:#62BB93; --accent-ink:#0B1410; --ember:#FF7B4A; --focus:#7AA7FF;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F1513; --surface:#172019; --surface-2:#1F2B24; --ink:#E7EDE9; --muted:#97A79F;
+  --line:#2B3932; --accent:#62BB93; --accent-ink:#0B1410; --ember:#FF7B4A; --focus:#7AA7FF;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 70px);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.65;-webkit-text-size-adjust:100%}
+h1,h2,h3,h4,button,label,input,select,th,.ui{font-family:var(--ui)}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:3px}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:12px;height:56px}
+.brand{font-family:var(--ui);font-weight:800;font-size:16px;white-space:nowrap}
+nav.sections{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav.sections::-webkit-scrollbar{display:none}
+nav.sections a{font-family:var(--ui);font-size:14px;text-decoration:none;color:var(--muted);padding:8px 10px;border-radius:4px;white-space:nowrap}
+nav.sections a:hover{color:var(--ink)}
+nav.sections a.active{color:var(--ink);background:var(--surface-2);font-weight:600}
+.iconbtn{font-family:var(--ui);font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 11px;border-radius:4px;cursor:pointer}
+.iconbtn:hover{border-color:var(--accent)}
+
+/* hero */
+.hero{padding:56px 0 40px}
+.hero h1{font-weight:800;font-size:clamp(34px,6vw,64px);line-height:1.02;letter-spacing:-.02em;margin:0 0 18px;max-width:16ch}
+.hero p.lede{font-size:clamp(18px,2.2vw,22px);max-width:62ch;margin:0 0 28px;color:var(--muted)}
+.hero .cta{margin-bottom:34px}
+.provnote{font-family:var(--ui);font-size:14px;color:var(--muted);margin:0 0 18px}
+.byline{font-family:var(--ui);font-size:14px;color:var(--muted);margin:0 0 22px}
+
+.explorer{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px;display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.explorer{grid-template-columns:1.6fr 1fr}}
+.explorer h2{margin:0 0 6px;font-size:22px}
+.explorer .hint{margin:0 0 16px;font-size:15px;color:var(--muted)}
+.chartbox{position:relative;height:320px}
+.slider-row{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.slider-row label{font-size:14px;font-weight:600;display:flex;justify-content:space-between}
+input[type=range]{width:100%;accent-color:var(--ember);height:28px}
+.readouts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.readout{border-left:4px solid var(--line);padding:2px 0 2px 10px}
+.readout .k{font-family:var(--ui);font-size:12px;color:var(--muted)}
+.readout .v{font-family:var(--ui);font-weight:800;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.readout.hot{border-color:var(--ember)}
+.classchip{display:inline-block;margin-top:12px;padding:6px 12px;border-radius:99px;font-family:var(--ui);font-weight:600;font-size:14px;color:#111;background:#ddd}
+
+/* sections: label column + content column */
+section.doc{border-top:6px solid var(--accent);padding:34px 0 46px;display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:900px){section.doc{grid-template-columns:220px 1fr;gap:40px}}
+section.doc>header h2{margin:0 0 6px;font-size:26px;line-height:1.15;letter-spacing:-.01em}
+section.doc>header p{margin:0;font-size:14.5px;color:var(--muted);font-family:var(--ui);line-height:1.45}
+.content>*:first-child{margin-top:0}
+.content h3{font-size:19px;margin:30px 0 8px}
+.content p{margin:0 0 14px;max-width:72ch}
+.content ul,.content ol{max-width:72ch;padding-left:22px;margin:0 0 16px}
+.content li{margin-bottom:6px}
+.formula{font-family:'Cambria Math','STIX Two Math',Georgia,serif;font-style:italic;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--accent);padding:12px 16px;margin:10px 0 16px;overflow-x:auto;font-size:19px;max-width:72ch}
+.note{border-left:4px solid var(--ember);background:var(--surface);padding:10px 14px;margin:14px 0;font-size:16px;max-width:72ch}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface);margin:12px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:600;background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums}
+.swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:8px;vertical-align:-1px;border:1px solid rgba(0,0,0,.25)}
+
+/* datasets */
+.dsgrid{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:760px){.dsgrid{grid-template-columns:1fr 1fr}}
+.ds{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px}
+.ds h3{margin:0 0 4px;font-size:17px}
+.ds code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;background:var(--surface-2);padding:2px 6px;border-radius:3px;word-break:break-all}
+.ds p{font-size:16px;margin:8px 0 0}
+.tag{display:inline-block;font-family:var(--ui);font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-bottom:8px}
+.tag.used{border-color:var(--accent);color:var(--accent)}
+
+/* timeline */
+.timeline{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;margin:14px 0 18px;overflow-x:auto}
+.timeline svg{display:block;min-width:620px;width:100%;height:auto}
+.timeline text{font-family:var(--ui);font-size:12px;fill:var(--ink)}
+.timeline .sub{fill:var(--muted)}
+
+/* stepper */
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.steps button{font-size:14px;padding:9px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px;cursor:pointer}
+.steps button[aria-selected=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.steppanel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px;max-width:72ch}
+.steppanel h3{margin:0 0 8px}
+.steppanel p{margin:0 0 10px}
+
+/* calculator */
+.calc{display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:760px){.calc{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+.panel h3{margin:0 0 4px;font-size:17px}
+.panel .hint{font-size:14px;color:var(--muted);margin:0 0 12px;font-family:var(--ui)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+.fields input,.fields select{font-size:16px;padding:8px 9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:4px;width:100%;font-variant-numeric:tabular-nums}
+.out{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.out .readout .v{font-size:22px}
+.outline{grid-column:1/-1;font-family:var(--ui);font-size:14px}
+
+/* results */
+.dot{width:12px;height:12px;border-radius:2px;border:1px solid rgba(0,0,0,.25)}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 4px}
+.btn{font-size:14px;padding:9px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:600}
+.btn.ghost{background:transparent;color:var(--accent)}
+.chartgrid{display:grid;gap:18px;grid-template-columns:1fr;margin-top:20px}
+@media (min-width:900px){.chartgrid{grid-template-columns:1.3fr 1fr}.chartgrid .wide{grid-column:1/-1}}
+.chartcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.chartcard h3{margin:0 0 2px;font-size:16px}
+.chartcard .hint{margin:0 0 8px;font-size:13.5px;color:var(--muted);font-family:var(--ui)}
+.chartcard .chartbox{height:300px}
+.chartfail{padding:20px;color:var(--muted);font-family:var(--ui)}
+
+/* interpretation */
+.interp{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px;max-width:76ch}
+.interp p{margin:0 0 12px}
+.interp .flag{color:var(--ember);font-weight:500}
+details{background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-bottom:10px;max-width:76ch}
+details summary{cursor:pointer;padding:12px 16px;font-family:var(--ui);font-weight:600;font-size:16px}
+details>div{padding:0 16px 6px}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+.refs li{margin-bottom:10px}
+footer{border-top:6px solid var(--accent);padding:26px 0 40px;font-family:var(--ui);font-size:14px;color:var(--muted)}
+.sr{position:absolute;left:-9999px}
+a.btn{text-decoration:none;display:inline-block}
+.cta{margin:0 0 26px}
+
+/* animated type: letters settle from light and ember-coloured to full weight and ink */
+.split .wd{display:inline-block;white-space:nowrap}
+.split .ch{display:inline-block;text-align:center;font-variation-settings:'wght' 800;transition:font-variation-settings .3s ease}
+section.doc>header h2.split .ch{font-variation-settings:'wght' 700}
+.split .ch:hover,section.doc>header h2.split .ch:hover{font-variation-settings:'wght' 300}
+.split.pending .ch{opacity:0}
+.split.play .ch{animation:burnin .95s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:calc(var(--i) * 32ms)}
+@keyframes burnin{from{font-variation-settings:'wght' 200;color:var(--ember);transform:translateY(.16em);opacity:0}}
+@media (prefers-reduced-motion:reduce){.split.pending .ch{opacity:1}.split.play .ch{animation:none}}
+@media print{.topbar,.btnrow{display:none}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <span class="brand">Burn Severity Assessment</span>
+    <nav class="sections" aria-label="Sections">
+      <a href="#liveapp">Live app</a>
+      <a href="#aim">Aim</a>
+      <a href="#datasets">Datasets</a>
+      <a href="#method">Method</a>
+      <a href="#indices">Spectral indices</a>
+      <a href="#results">Results</a>
+      <a href="#interpretation">Interpretation</a>
+      <a href="#limits">Limitations</a>
+      <a href="#refs">References</a>
+    </nav>
+    <button class="iconbtn" id="themeBtn" type="button" aria-label="Switch colour theme">Theme</button>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Burn severity and post-fire vegetation recovery</h1>
+    <p class="lede">A Sentinel-2 assessment of fire impact in <strong class="areaName">the study area</strong>. Burn severity is quantified with the differenced Normalized Burn Ratio (dNBR), and early vegetation recovery is evaluated through the change in NDVI one year after the fire. All processing was carried out in Google Earth Engine.</p>
+    <p class="byline" id="byline"></p>
+
+    <div class="btnrow cta">
+      <a class="btn" href="https://sodium-terrain-475105-q5.projects.earthengine.app/view/burn-severity--regrowth" target="_blank" rel="noopener noreferrer">Open the live Earth Engine app</a>
+      <a class="btn ghost" href="#results">View results</a>
+    </div>
+
+    <div class="explorer">
+      <div>
+        <h2>Spectral basis of the burn ratio</h2>
+        <p class="hint">Healthy vegetation reflects strongly in the near-infrared (B8A) and weakly in the shortwave-infrared (B12). Combustion reverses this contrast, and the normalized ratio of the two bands captures the change. Adjust the slider to simulate increasing fire impact on the canopy. The spectra shown are representative of healthy and burned vegetation.</p>
+        <div class="chartbox"><canvas id="heroChart" aria-label="Spectral reflectance before and after fire" role="img"></canvas></div>
+      </div>
+      <div>
+        <div class="slider-row">
+          <label for="sevSlider"><span>Simulated fire impact</span><span id="sevVal">60%</span></label>
+          <input id="sevSlider" type="range" min="0" max="100" value="60">
+        </div>
+        <div class="readouts">
+          <div class="readout"><div class="k">NBR before fire</div><div class="v" id="hNbrPre">0.60</div></div>
+          <div class="readout hot"><div class="k">NBR after fire</div><div class="v" id="hNbrPost">0.00</div></div>
+          <div class="readout hot" style="grid-column:1/-1"><div class="k">dNBR (before minus after)</div><div class="v" id="hDnbr">0.00</div></div>
+        </div>
+        <span class="classchip" id="hClass">Class</span>
+        <p style="font-size:15px;margin:14px 0 0;color:var(--muted)">Higher dNBR values indicate a greater decline in vegetation condition between the two acquisition periods.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE APP -->
+  <section class="doc" id="liveapp">
+    <header>
+      <h2>Live Earth Engine app</h2>
+      <p>The interactive Google Earth Engine application from which the results on this page were derived.</p>
+    </header>
+    <div class="content">
+      <p>The application performs the complete workflow in Google Earth Engine. It generates the three Sentinel-2 composites, derives NBR, dNBR, NDVI and ΔNDVI, maps burn severity and vegetation regrowth, and reports the area of each class in hectares. Users can adjust the analysis periods, toggle map layers and query individual pixels.</p>
+      <div class="btnrow">
+        <a class="btn" href="https://sodium-terrain-475105-q5.projects.earthengine.app/view/burn-severity--regrowth" target="_blank" rel="noopener noreferrer">Open the live app</a>
+              </div>
+    </div>
+  </section>
+
+  <!-- AIM -->
+  <section class="doc" id="aim">
+    <header>
+      <h2>Aim and objectives</h2>
+      <p>Purpose of the study and the research questions addressed.</p>
+    </header>
+    <div class="content">
+      <h3>Aim</h3>
+      <p>To map and quantify burn severity in <span class="areaName">the study area</span> using Sentinel-2 surface reflectance and the differenced Normalized Burn Ratio (dNBR), and to assess early vegetation recovery one year after the fire using the change in NDVI, with all processing done in Google Earth Engine.</p>
+      <h3>Objectives</h3>
+      <ol>
+        <li>Build cloud-, shadow- and water-masked Sentinel-2 median composites for the pre-fire, immediate post-fire and one-year recovery periods.</li>
+        <li>Compute NBR for the pre- and post-fire periods and difference them to produce a continuous burn severity surface (dNBR).</li>
+        <li>Classify dNBR into burn severity classes and report the area (hectares) of each class.</li>
+        <li>Compute NDVI for the post-fire and one-year periods, difference it to measure regrowth, and classify the recovery.</li>
+        <li>Interpret the spatial and statistical patterns, state the uncertainties, and recommend how to validate the maps.</li>
+      </ol>
+      <h3>Research questions</h3>
+      <ul>
+        <li>What proportion of the study area exhibits a measurable decline in vegetation condition, and what share of it is of moderate-high or high severity?</li>
+        <li>How is first-year vegetation recovery distributed across the burned landscape?</li>
+        <li>To what extent is vegetation recovery associated with burn severity?</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- DATASETS -->
+  <section class="doc" id="datasets">
+    <header>
+      <h2>Datasets</h2>
+      <p>Data sources, spectral bands and analysis periods.</p>
+    </header>
+    <div class="content">
+      <div class="dsgrid">
+        <div class="ds">
+          <span class="tag used">Used</span>
+          <h3>Sentinel-2 MSI Level-2A, harmonized</h3>
+          <code>COPERNICUS/S2_SR_HARMONIZED</code>
+          <p>Atmospherically corrected surface reflectance from the Copernicus Sentinel-2 mission (ESA), 10, 20 and 60 m bands, revisit of about five days with two satellites. Reflectance is stored scaled by 10,000. The harmonized collection corrects the offset introduced by processing baseline 04.00, so scenes from before and after early 2022 are comparable.</p>
+        </div>
+        <div class="ds">
+          <span class="tag used">Used</span>
+          <h3>Area of interest (AOI)</h3>
+          <code>projects/shruti-ee/assets/Polygons</code>
+          <p>The study area boundary, stored as an Earth Engine feature collection. All composites, statistics and area totals are confined to this boundary.</p>
+        </div>
+        <div class="ds">
+          <span class="tag used">Used</span>
+          <h3>Scene Classification Layer (SCL)</h3>
+          <code>SCL band, 20 m</code>
+          <p>A per-pixel class map shipped with Level-2A products. It is used for the pixel-level mask: saturated, cloud shadow, water, unclassified, medium and high cloud probability, cirrus and snow are removed. Dark-area pixels are kept because burn scars are dark.</p>
+        </div>
+        <div class="ds">
+          <span class="tag">Recommended for validation</span>
+          <h3>Reference data</h3>
+          <code>fire perimeters, field plots, high-resolution imagery</code>
+          <p>Official fire perimeters, Composite Burn Index (CBI) field plots, or very-high-resolution imagery give an independent check on the severity map. MODIS or VIIRS active-fire detections help confirm the fire dates.</p>
+        </div>
+      </div>
+
+      <h3>Bands used</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Band</th><th>Name</th><th>Centre wavelength</th><th>Resolution</th><th>Role in this study</th></tr></thead>
+          <tbody>
+            <tr><td>B2</td><td>Blue</td><td class="num">490 nm</td><td class="num">10 m</td><td>True-colour display</td></tr>
+            <tr><td>B3</td><td>Green</td><td class="num">560 nm</td><td class="num">10 m</td><td>True-colour display</td></tr>
+            <tr><td>B4</td><td>Red</td><td class="num">665 nm</td><td class="num">10 m</td><td>NDVI (red term)</td></tr>
+            <tr><td>B8</td><td>Near-infrared</td><td class="num">842 nm</td><td class="num">10 m</td><td>NDVI (NIR term)</td></tr>
+            <tr><td>B8A</td><td>Narrow near-infrared</td><td class="num">865 nm</td><td class="num">20 m</td><td>NBR (NIR term)</td></tr>
+            <tr><td>B12</td><td>Shortwave-infrared 2</td><td class="num">2190 nm</td><td class="num">20 m</td><td>NBR (SWIR term)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>NBR pairs B8A with B12 because both are 20 m bands, so the index is computed at a consistent native resolution. NDVI uses the 10 m B8 and B4 pair.</p>
+
+      <h3>Analysis windows</h3>
+      <p>Three compositing periods were defined. The fire event occurred between the pre-fire and post-fire periods, and the recovery period covers the same season one year later.</p>
+      <div class="timeline">
+        <svg viewBox="0 0 700 150" role="img" aria-label="Timeline of the three analysis windows">
+          <line x1="30" y1="70" x2="670" y2="70" stroke="currentColor" stroke-opacity=".35" stroke-width="2"/>
+          <rect x="60" y="48" width="70" height="44" rx="4" fill="#1B6B3A"/>
+          <text x="95" y="74" text-anchor="middle" style="fill:#fff;font-weight:600">Pre-fire</text>
+          <rect x="160" y="48" width="70" height="44" rx="4" fill="#C8261E"/>
+          <text x="195" y="74" text-anchor="middle" style="fill:#fff;font-weight:600">Post-fire</text>
+          <rect x="430" y="48" width="140" height="44" rx="4" fill="#4FA35A"/>
+          <text x="500" y="74" text-anchor="middle" style="fill:#fff;font-weight:600">Recovery</text>
+          <text x="95" y="112" text-anchor="middle" class="sub">Jul 2020</text>
+          <text x="195" y="112" text-anchor="middle" class="sub">Sep 2020</text>
+          <text x="500" y="112" text-anchor="middle" class="sub">Jul to Sep 2021</text>
+          <text x="350" y="30" text-anchor="middle" class="sub">Fire event falls between the pre-fire and post-fire windows</text>
+        </svg>
+      </div>
+      <div class="note">The harmonized collection was preferred over the legacy <code>COPERNICUS/S2_SR</code> dataset, which is no longer updated and contains scenes with inconsistent band structures.</div>
+    </div>
+  </section>
+
+  <!-- METHOD -->
+  <section class="doc" id="method">
+    <header>
+      <h2>Method</h2>
+      <p>Processing workflow, spectral indices and classification schemes.</p>
+    </header>
+    <div class="content">
+      <p>The workflow comprises seven stages. Select a stage for a description.</p>
+      <div class="steps" role="tablist" id="stepTabs"></div>
+      <div class="steppanel" id="stepPanel" role="tabpanel" aria-live="polite"></div>
+
+      <h3>Indices</h3>
+      <div class="formula">NBR = (B8A − B12) / (B8A + B12)</div>
+      <div class="formula">dNBR = NBR<sub>pre-fire</sub> − NBR<sub>post-fire</sub></div>
+      <div class="formula">NDVI = (B8 − B4) / (B8 + B4)</div>
+      <div class="formula">ΔNDVI = NDVI<sub>one year after</sub> − NDVI<sub>post-fire</sub></div>
+      <p>As normalized band ratios, all indices are dimensionless, range from −1 to 1, and are unaffected by the 10,000 reflectance scaling factor.</p>
+
+      <h3>Classification schemes</h3>
+      <p>Burn severity was classified with a custom six-class scheme. The widely adopted USGS FIREMON thresholds (Key and Benson, 2006) are presented alongside it for comparison.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Class in this study (custom)</th><th>dNBR range</th><th>USGS FIREMON class</th><th>dNBR range</th></tr></thead>
+          <tbody>
+            <tr><td><span class="swatch" style="background:#1B6B3A"></span>Increased greenness</td><td class="num">&lt; −0.25</td><td>Enhanced regrowth, high</td><td class="num">&lt; −0.25</td></tr>
+            <tr><td><span class="swatch" style="background:#5BAE5B"></span>Unburned</td><td class="num">−0.25 to &lt; 0</td><td>Enhanced regrowth, low / Unburned</td><td class="num">−0.25 to 0.10</td></tr>
+            <tr><td><span class="swatch" style="background:#C9C27A"></span>Low severity</td><td class="num">0 to &lt; 0.25</td><td>Low severity</td><td class="num">0.10 to 0.27</td></tr>
+            <tr><td><span class="swatch" style="background:#F2D13C"></span>Low-moderate</td><td class="num">0.25 to &lt; 0.40</td><td>Moderate-low</td><td class="num">0.27 to 0.44</td></tr>
+            <tr><td><span class="swatch" style="background:#EF8A2B"></span>Moderate-high</td><td class="num">0.40 to &lt; 0.60</td><td>Moderate-high</td><td class="num">0.44 to 0.66</td></tr>
+            <tr><td><span class="swatch" style="background:#C8261E"></span>High severity</td><td class="num">≥ 0.60</td><td>High severity</td><td class="num">&gt; 0.66</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">The custom low-severity class begins at a dNBR of 0, whereas the USGS scheme regards values up to 0.10 as unburned. The low-severity area is therefore an upper estimate. Calibration of thresholds against field observations is recommended.</div>
+
+      <h3>Regrowth classes (custom, on ΔNDVI)</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Class</th><th>ΔNDVI range</th><th>Reading</th></tr></thead>
+          <tbody>
+            <tr><td><span class="swatch" style="background:#C8261E"></span>NDVI decline</td><td class="num">&lt; 0</td><td>Further decline after the fire</td></tr>
+            <tr><td><span class="swatch" style="background:#EF8A2B"></span>Very low / none</td><td class="num">0 to &lt; 0.10</td><td>Negligible change</td></tr>
+            <tr><td><span class="swatch" style="background:#A8D5A0"></span>Low recovery</td><td class="num">0.10 to &lt; 0.30</td><td>Early regrowth, mainly herbaceous</td></tr>
+            <tr><td><span class="swatch" style="background:#4FA35A"></span>Moderate recovery</td><td class="num">0.30 to &lt; 0.50</td><td>Substantial shrub or canopy regrowth</td></tr>
+            <tr><td><span class="swatch" style="background:#1B6B3A"></span>High recovery</td><td class="num">≥ 0.50</td><td>Strong regrowth; possible seasonal influence</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- INDEX CALCULATOR -->
+  <section class="doc" id="indices">
+    <header>
+      <h2>Spectral index calculator</h2>
+      <p>Computation of NBR, dNBR, NDVI and ΔNDVI for a single pixel from surface reflectance values.</p>
+    </header>
+    <div class="content">
+      <p>Values are entered as surface reflectance between 0 and 1, which equals the stored Sentinel-2 value divided by 10,000 (a stored value of 4,000 corresponds to 0.40).</p>
+      <div class="calc">
+        <div class="panel">
+          <h3>Burn severity (NBR and dNBR)</h3>
+          <p class="hint">Uses B8A and B12.</p>
+          <div class="fields">
+            <label>Pre-fire B8A<input id="c_preNir" type="number" min="0" max="1" step="0.01" value="0.40"></label>
+            <label>Pre-fire B12<input id="c_preSwir" type="number" min="0" max="1" step="0.01" value="0.10"></label>
+            <label>Post-fire B8A<input id="c_postNir" type="number" min="0" max="1" step="0.01" value="0.16"></label>
+            <label>Post-fire B12<input id="c_postSwir" type="number" min="0" max="1" step="0.01" value="0.19"></label>
+          </div>
+          <div class="out">
+            <div class="readout"><div class="k">NBR pre-fire</div><div class="v" id="o_nbrPre">—</div></div>
+            <div class="readout hot"><div class="k">NBR post-fire</div><div class="v" id="o_nbrPost">—</div></div>
+            <div class="readout hot"><div class="k">dNBR</div><div class="v" id="o_dnbr">—</div></div>
+            <div class="outline" id="o_sev"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Regrowth (NDVI and ΔNDVI)</h3>
+          <p class="hint">Uses B8 and B4.</p>
+          <div class="fields">
+            <label>Post-fire B4 (red)<input id="c_postRed" type="number" min="0" max="1" step="0.01" value="0.08"></label>
+            <label>Post-fire B8 (NIR)<input id="c_postN" type="number" min="0" max="1" step="0.01" value="0.20"></label>
+            <label>One year B4 (red)<input id="c_oneRed" type="number" min="0" max="1" step="0.01" value="0.06"></label>
+            <label>One year B8 (NIR)<input id="c_oneN" type="number" min="0" max="1" step="0.01" value="0.30"></label>
+          </div>
+          <div class="out">
+            <div class="readout"><div class="k">NDVI post-fire</div><div class="v" id="o_ndPost">—</div></div>
+            <div class="readout"><div class="k">NDVI one year after</div><div class="v" id="o_ndOne">—</div></div>
+            <div class="readout hot"><div class="k">ΔNDVI</div><div class="v" id="o_dnd">—</div></div>
+            <div class="outline" id="o_reg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="doc" id="results">
+    <header>
+      <h2>Results</h2>
+      <p>Area statistics for burn severity and vegetation regrowth classes within the study area.</p>
+    </header>
+    <div class="content">
+      <p class="provnote" id="provNote" hidden>Provisional figures, subject to final verification.</p>
+
+      <div class="chartgrid">
+        <div class="chartcard">
+          <h3>Area by burn severity class</h3>
+          <p class="hint">Area (ha) per dNBR class</p>
+          <div class="chartbox"><canvas id="sevChart" role="img" aria-label="Bar chart of area by burn severity class"></canvas></div>
+        </div>
+        <div class="chartcard">
+          <h3>Share of the analysed area</h3>
+          <p class="hint">Proportion (%) per severity class</p>
+          <div class="chartbox"><canvas id="shareChart" role="img" aria-label="Doughnut chart of severity class shares"></canvas></div>
+        </div>
+        <div class="chartcard">
+          <h3>Area by regrowth class</h3>
+          <p class="hint">Area (ha) per ΔNDVI class</p>
+          <div class="chartbox"><canvas id="regChart" role="img" aria-label="Bar chart of area by regrowth class"></canvas></div>
+        </div>
+        <div class="chartcard" id="ndviCard">
+          <h3>Mean NDVI trajectory</h3>
+          <p class="hint">Mean NDVI before, after and one year after the fire</p>
+          <div class="chartbox"><canvas id="ndviChart" role="img" aria-label="Line chart of mean NDVI over time"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERPRETATION -->
+  <section class="doc" id="interpretation">
+    <header>
+      <h2>Interpretation</h2>
+      <p>Principal findings and guidance on reading the charts.</p>
+    </header>
+    <div class="content">
+      <h3>Key findings</h3>
+      <div class="interp" id="interpBox" aria-live="polite"></div>
+
+      <h3>Guide to the charts</h3>
+      <details open><summary>Burn severity bar chart</summary><div>
+        <p>A concentration of area in the moderate-high and high classes indicates extensive canopy consumption and exposure of char and bare soil. A concentration in the lower classes indicates light or patchy burning. The increased-greenness and unburned classes do not represent fire effects.</p>
+      </div></details>
+      <details><summary>Severity share doughnut</summary><div>
+        <p>Presents the severity distribution as proportions, enabling comparison with other fires or periods irrespective of area. The low to high severity classes together approximate the burned fraction.</p>
+      </div></details>
+      <details><summary>Regrowth bar chart</summary><div>
+        <p>A distribution weighted towards the lower classes indicates slow first-year recovery, while one weighted towards the moderate and high classes indicates rapid regrowth, typically dominated by grasses, herbs and resprouting shrubs rather than restored forest canopy. Areas of NDVI decline may reflect delayed mortality, seasonal differences or residual cloud.</p>
+      </div></details>
+      <details><summary>NDVI trajectory</summary><div>
+        <p>A healthy stand shows high NDVI before the fire, a sharp decline afterwards and a gradual increase during recovery. The recovery fraction is defined as (one year − post-fire) ÷ (pre-fire − post-fire); a value close to 1 denotes a return to pre-fire greenness. Herbaceous regrowth can raise NDVI rapidly without restoring forest structure.</p>
+      </div></details>
+      <details><summary>Relating severity to regrowth</summary><div>
+        <p>High-severity patches frequently exhibit the largest absolute NDVI gain because they begin from the lowest values, whereas unburned and low-severity areas change little. A formal assessment of this relationship requires cross-tabulation of the two class maps or sampling of both rasters at random points.</p>
+      </div></details>
+    </div>
+  </section>
+
+  <!-- LIMITATIONS -->
+  <section class="doc" id="limits">
+    <header>
+      <h2>Limitations and validation</h2>
+      <p>Sources of uncertainty and recommended validation.</p>
+    </header>
+    <div class="content">
+      <details open><summary>Seasonal and phenology effects</summary><div>
+        <p>Where the pre-fire and post-fire periods fall in different phenological stages, dNBR incorporates seasonal change in addition to fire effects. The recovery period (July to September 2021) is also longer than the single-month post-fire period, which may introduce additional seasonal variation.</p>
+      </div></details>
+      <details><summary>Clouds, smoke and shadow</summary><div>
+        <p>The SCL mask removes most cloud, but thin smoke and haze may persist and bias NBR, particularly immediately after a fire. Median compositing reduces, but does not eliminate, this effect. Composites built from only one or two scenes are less reliable.</p>
+      </div></details>
+      <details><summary>Threshold choice</summary><div>
+        <p>Class limits are conventions. The custom limits differ from the USGS scheme, and appropriate thresholds vary between ecosystems. Absolute dNBR also depends on pre-fire biomass; relative indices such as RdNBR (Miller and Thode, 2007) and RBR perform better in heterogeneous landscapes.</p>
+      </div></details>
+      <details><summary>Resolution and area accuracy</summary><div>
+        <p>NBR is computed at 20 m, so each pixel represents 0.04 ha and small or narrow burn patches are generalised. Area statistics were computed with <code>bestEffort</code>, which may coarsen the scale over very large areas; exact totals require export and offline computation of the class rasters.</p>
+      </div></details>
+      <details><summary>NDVI saturation and what "regrowth" means</summary><div>
+        <p>NDVI saturates in dense canopy and is dominated by herbaceous cover in the early post-fire stage. A large first-year ΔNDVI therefore does not imply forest recovery. Conclusions on ecosystem recovery require structural or multi-year observations.</p>
+      </div></details>
+      <details><summary>Water masking, terrain and other land cover</summary><div>
+        <p>Water was masked as it does not constitute fuel. Terrain shading, agricultural activity and harvesting can also alter dNBR and NDVI and be misattributed to fire or recovery. Masking such areas with a land-cover dataset is recommended.</p>
+      </div></details>
+      <details open><summary>Recommended validation</summary><div>
+        <ul>
+          <li>Comparison of the mapped burned extent with official fire perimeters, reporting spatial overlap (for example, the Dice or Jaccard coefficient).</li>
+          <li>Accuracy assessment against Composite Burn Index plots or visually interpreted high-resolution reference points, reporting overall, producer's and user's accuracy and the kappa coefficient.</li>
+          <li>Sensitivity analysis of the cloud threshold, compositing periods and class limits.</li>
+        </ul>
+      </div></details>
+    </div>
+  </section>
+
+  <!-- REFERENCES -->
+  <section class="doc" id="refs">
+    <header>
+      <h2>References</h2>
+      <p>Principal sources for the indices, data and processing platform.</p>
+    </header>
+    <div class="content">
+      <ol class="refs">
+        <li>Key, C.H. and Benson, N.C. (2006). Landscape Assessment (LA): Sampling and analysis methods. In FIREMON: Fire Effects Monitoring and Inventory System. USDA Forest Service, General Technical Report RMRS-GTR-164-CD.</li>
+        <li>Miller, J.D. and Thode, A.E. (2007). Quantifying burn severity in a heterogeneous landscape with a relative version of the delta Normalized Burn Ratio (dNBR). Remote Sensing of Environment, 109, 66–80.</li>
+        <li>Escuin, S., Navarro, R. and Fernández, P. (2008). Fire severity assessment by using NBR (Normalized Burn Ratio) and NDVI (Normalized Difference Vegetation Index) derived from Landsat TM/ETM images. International Journal of Remote Sensing, 29, 1053–1073.</li>
+        <li>Rouse, J.W., Haas, R.H., Schell, J.A. and Deering, D.W. (1974). Monitoring vegetation systems in the Great Plains with ERTS. Third ERTS Symposium, NASA SP-351, 309–317.</li>
+        <li>Drusch, M. et al. (2012). Sentinel-2: ESA's optical high-resolution mission for GMES operational services. Remote Sensing of Environment, 120, 25–36.</li>
+        <li>Gorelick, N. et al. (2017). Google Earth Engine: Planetary-scale geospatial analysis for everyone. Remote Sensing of Environment, 202, 18–27.</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap"><span id="footAuthor"></span>Burn severity and post-fire vegetation recovery assessment based on Sentinel-2 Level-2A imagery, processed in Google Earth Engine. <a href="https://sodium-terrain-475105-q5.projects.earthengine.app/view/burn-severity--regrowth" target="_blank" rel="noopener noreferrer">Open the live application</a>.</div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+
+var SEV_NAMES=['Increased greenness','Unburned','Low severity','Low-moderate','Moderate-high','High severity'];
+var SEV_COL=['#1B6B3A','#5BAE5B','#C9C27A','#F2D13C','#EF8A2B','#C8261E'];
+var REG_NAMES=['NDVI decline','Very low / none','Low recovery','Moderate recovery','High recovery'];
+var REG_COL=['#C8261E','#EF8A2B','#A8D5A0','#4FA35A','#1B6B3A'];
+/* ================= STUDY CONFIGURATION =================
+   Edit the values below to update every chart and the findings.
+   Areas are in hectares, in the class order shown.            */
+var STUDY={
+  author:'Yogiraj',
+  areaName:'the study area',
+  final:false,          // set to true once the figures below are the final Earth Engine outputs
+  // Increased greenness, Unburned, Low, Low-moderate, Moderate-high, High
+  severityHa:[1200,18500,9400,5200,3100,1600],
+  // NDVI decline, Very low / none, Low, Moderate, High recovery
+  regrowthHa:[2100,6400,9800,7600,3200],
+  // Optional mean values (use null if not available)
+  meanNdviPre:null,
+  meanNdviPost:null,
+  meanNdviOneYear:null,
+  meanDnbr:null
+};
+/* ======================================================== */
+
+function $(s,r){return (r||document).querySelector(s);}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function num(el){var v=parseFloat(el.value);return isFinite(v)?v:NaN;}
+function fmt(n,d){return isFinite(n)?n.toFixed(d):'—';}
+function ha(n){return Math.round(n).toLocaleString();}
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+/* ---------- theme ---------- */
+function currentTheme(){
+  var t=document.documentElement.getAttribute('data-theme');
+  if(t) return t;
+  return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+}
+$('#themeBtn').addEventListener('click',function(){
+  var next=currentTheme()==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  chartTheme();
+});
+if(window.matchMedia){
+  var mq=window.matchMedia('(prefers-color-scheme: dark)');
+  var onMq=function(){chartTheme();};
+  if(mq.addEventListener) mq.addEventListener('change',onMq);
+}
+
+/* ---------- classification helpers ---------- */
+function customSev(d){
+  if(!isFinite(d)) return null;
+  var i=d<-0.25?0:d<0?1:d<0.25?2:d<0.40?3:d<0.60?4:5;
+  return {i:i,name:SEV_NAMES[i],col:SEV_COL[i]};
+}
+function usgsSev(d){
+  if(!isFinite(d)) return '—';
+  if(d<-0.25) return 'Enhanced regrowth, high';
+  if(d<-0.10) return 'Enhanced regrowth, low';
+  if(d<0.10) return 'Unburned';
+  if(d<0.27) return 'Low severity';
+  if(d<0.44) return 'Moderate-low severity';
+  if(d<0.66) return 'Moderate-high severity';
+  return 'High severity';
+}
+function regClass(d){
+  if(!isFinite(d)) return null;
+  var i=d<0?0:d<0.10?1:d<0.30?2:d<0.50?3:4;
+  return {i:i,name:REG_NAMES[i],col:REG_COL[i]};
+}
+function nd(a,b){var s=a+b;return s===0?NaN:(a-b)/s;}
+
+/* ---------- hero spectral explorer ---------- */
+var BANDS=['B2 · 490','B3 · 560','B4 · 665','B8 · 842','B8A · 865','B12 · 2190'].map(function(s){return s.replace(' · ',' ');});
+var HEALTHY=[0.03,0.07,0.04,0.38,0.40,0.10];
+var BURNED =[0.05,0.07,0.09,0.13,0.14,0.21];
+function mix(s){return HEALTHY.map(function(h,i){return h+(BURNED[i]-h)*s;});}
+
+var charts={};
+var chartsOK=(typeof Chart!=='undefined');
+
+function chartTheme(){
+  if(!chartsOK) return;
+  Chart.defaults.color=cssVar('--muted');
+  Chart.defaults.borderColor=cssVar('--line');
+  Chart.defaults.font.family=cssVar('--ui');
+  Object.keys(charts).forEach(function(k){
+    var c=charts[k];
+    if(k==='hero'){
+      c.data.datasets[0].borderColor=cssVar('--accent');
+      c.data.datasets[0].pointBackgroundColor=cssVar('--accent');
+      c.data.datasets[1].borderColor=cssVar('--ember');
+      c.data.datasets[1].pointBackgroundColor=cssVar('--ember');
+    }
+    if(k==='ndvi'){
+      c.data.datasets[0].borderColor=cssVar('--accent');
+      c.data.datasets[0].pointBackgroundColor=cssVar('--accent');
+    }
+    c.update('none');
+  });
+}
+
+function showChartFail(){
+  $$('.chartbox').forEach(function(b){
+    b.innerHTML='<div class="chartfail">The charts could not be displayed. Please reload the page; the findings remain available below.</div>';
+  });
+}
+
+function buildHero(){
+  var ctx=$('#heroChart').getContext('2d');
+  charts.hero=new Chart(ctx,{
+    type:'line',
+    data:{labels:BANDS,datasets:[
+      {label:'Before fire (healthy canopy)',data:HEALTHY,borderColor:cssVar('--accent'),pointBackgroundColor:cssVar('--accent'),borderWidth:2.5,borderDash:[6,4],tension:.25,pointRadius:[3,3,3,3,7,7]},
+      {label:'After fire',data:mix(0.6),borderColor:cssVar('--ember'),pointBackgroundColor:cssVar('--ember'),borderWidth:3,tension:.25,pointRadius:[3,3,3,3,7,7]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},
+      scales:{
+        y:{min:0,max:0.5,title:{display:true,text:'Surface reflectance'}},
+        x:{title:{display:true,text:'Sentinel-2 band and centre wavelength (nm)'}}
+      },
+      plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toFixed(3);}}}}
+    }
+  });
+  $('#sevSlider').addEventListener('input',updateHero);
+  updateHero();
+}
+function updateHero(){
+  var s=parseFloat($('#sevSlider').value)/100;
+  $('#sevVal').textContent=Math.round(s*100)+'%';
+  var post=mix(s);
+  var pre=HEALTHY;
+  var nbrPre=nd(pre[4],pre[5]), nbrPost=nd(post[4],post[5]);
+  var d=nbrPre-nbrPost;
+  $('#hNbrPre').textContent=fmt(nbrPre,2);
+  $('#hNbrPost').textContent=fmt(nbrPost,2);
+  $('#hDnbr').textContent=fmt(d,2);
+  var c=customSev(d);
+  var chip=$('#hClass');
+  chip.textContent=c.name;
+  chip.style.background=c.col;
+  chip.style.color=(c.i===3||c.i===2||c.i===1)?'#111':'#fff';
+  if(charts.hero){charts.hero.data.datasets[1].data=post;charts.hero.update();}
+}
+
+/* ---------- stepper ---------- */
+var STEPS=[
+ {t:'Filter and mask',h:'Select and clean the scenes',p:[
+  'Scenes are filtered by date, by the AOI, and by a scene-level cloud ceiling (80%). Pixel-level cleaning then uses the Scene Classification Layer.',
+  'Removed: saturated or defective pixels, cloud shadow, water, unclassified, medium and high cloud probability, cirrus, and snow or ice. Dark-area pixels are kept because burn scars are naturally dark and would otherwise be thrown away.']},
+ {t:'Composite',h:'Median compositing',p:[
+  'Each window becomes one image by taking the per-pixel median of all clean observations. The median suppresses residual cloud, haze and shadow outliers and reduces noise from sun and view angle differences.',
+  'Every image is first reduced to the same six bands, ensuring a consistent band structure across the collection.']},
+ {t:'NBR',h:'Normalized Burn Ratio',p:[
+  'NBR contrasts near-infrared with shortwave-infrared. Healthy vegetation reflects strongly in NIR through leaf cell structure and absorbs SWIR2 through leaf water. Fire destroys the canopy, lowering NIR, and exposes char, ash and dry soil, raising SWIR2.',
+  'B8A and B12 are both 20 m bands, so NBR is calculated at a consistent resolution.']},
+ {t:'dNBR',h:'Differencing',p:[
+  'dNBR subtracts post-fire NBR from pre-fire NBR. Positive values mean NBR fell, which is the burn signal. Values near zero mean little change. Strongly negative values mean NBR rose, usually from vegetation growth or seasonal difference rather than fire.',
+  'Subtracting two dates cancels out stable site effects such as soil type and topography.']},
+ {t:'Classify',h:'Severity classes',p:[
+  'dNBR is cut into six classes. Every valid pixel is assigned explicitly, and the input mask is preserved so that masked pixels stay empty rather than silently becoming class 1.',
+  'Class limits are conventions; the comparison with the USGS scheme is given in the table below.']},
+ {t:'Regrowth',h:'NDVI change',p:[
+  'NDVI is computed for the post-fire and one-year composites, and the difference ΔNDVI measures greening. Regrowth classes are applied to ΔNDVI, not to dNBR, because recovery is a vegetation signal.',
+  'The continuous ΔNDVI layer is the primary quantitative product; the classes support communication of results.']},
+ {t:'Quantify',h:'Area statistics',p:[
+  'Pixel areas are summed by class to give hectares, and minimum, maximum and mean values are calculated within the study area boundary.',
+  'These totals form the basis of the Results section.']}
+];
+(function buildStepper(){
+  var tabs=$('#stepTabs'), panel=$('#stepPanel');
+  function show(i){
+    $$('#stepTabs button').forEach(function(b,j){b.setAttribute('aria-selected',j===i?'true':'false');});
+    var s=STEPS[i];
+    panel.innerHTML='<h3>'+(i+1)+'. '+s.h+'</h3>'+s.p.map(function(x){return '<p>'+x+'</p>';}).join('');
+  }
+  STEPS.forEach(function(s,i){
+    var b=document.createElement('button');
+    b.type='button';b.setAttribute('role','tab');b.textContent=(i+1)+'. '+s.t;
+    b.addEventListener('click',function(){show(i);});
+    tabs.appendChild(b);
+  });
+  show(0);
+})();
+
+/* ---------- calculator ---------- */
+function calc(){
+  var a=num($('#c_preNir')),b=num($('#c_preSwir')),c=num($('#c_postNir')),d=num($('#c_postSwir'));
+  var nPre=nd(a,b),nPost=nd(c,d),dn=nPre-nPost;
+  $('#o_nbrPre').textContent=fmt(nPre,3);
+  $('#o_nbrPost').textContent=fmt(nPost,3);
+  $('#o_dnbr').textContent=fmt(dn,3);
+  var cs=customSev(dn);
+  $('#o_sev').innerHTML=cs?('<span class="swatch" style="background:'+cs.col+'"></span><strong>'+cs.name+'</strong> (custom scheme)<br>USGS FIREMON: <strong>'+usgsSev(dn)+'</strong>'):'Values must be valid numbers.';
+  var pr=num($('#c_postRed')),pn=num($('#c_postN')),orr=num($('#c_oneRed')),on=num($('#c_oneN'));
+  var ndP=nd(pn,pr),ndO=nd(on,orr),dd=ndO-ndP;
+  $('#o_ndPost').textContent=fmt(ndP,3);
+  $('#o_ndOne').textContent=fmt(ndO,3);
+  $('#o_dnd').textContent=fmt(dd,3);
+  var rc=regClass(dd);
+  $('#o_reg').innerHTML=rc?('<span class="swatch" style="background:'+rc.col+'"></span><strong>'+rc.name+'</strong>'):'Values must be valid numbers.';
+}
+$$('.calc input').forEach(function(i){i.addEventListener('input',calc);});
+calc();
+
+/* ---------- study values ---------- */
+function clean(arr,n){var out=[];for(var i=0;i<n;i++){var v=+arr[i];out.push(isFinite(v)&&v>0?v:0);}return out;}
+function sum(a){return a.reduce(function(x,y){return x+y;},0);}
+function numOrNaN(v){return (v===null||v===undefined||v==='')?NaN:+v;}
+var SEV_HA=clean(STUDY.severityHa||[],6), REG_HA=clean(STUDY.regrowthHa||[],5);
+
+/* ---------- results charts ---------- */
+function buildResultCharts(){
+  charts.sev=new Chart($('#sevChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:SEV_NAMES,datasets:[{data:[],backgroundColor:SEV_COL,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){var t=sum(c.dataset.data);return ha(c.parsed.y)+' ha ('+(t?(100*c.parsed.y/t).toFixed(1):'0')+'%)';}}}},
+      scales:{y:{beginAtZero:true,title:{display:true,text:'Hectares'}},x:{ticks:{maxRotation:40,minRotation:40}}}}
+  });
+  charts.share=new Chart($('#shareChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:SEV_NAMES,datasets:[{data:[],backgroundColor:SEV_COL,borderWidth:1,borderColor:cssVar('--surface')}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:function(c){var t=sum(c.dataset.data);return c.label+': '+(t?(100*c.parsed/t).toFixed(1):'0')+'%';}}}}}
+  });
+  charts.reg=new Chart($('#regChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:REG_NAMES,datasets:[{data:[],backgroundColor:REG_COL,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){var t=sum(c.dataset.data);return ha(c.parsed.y)+' ha ('+(t?(100*c.parsed.y/t).toFixed(1):'0')+'%)';}}}},
+      scales:{y:{beginAtZero:true,title:{display:true,text:'Hectares'}},x:{ticks:{maxRotation:40,minRotation:40}}}}
+  });
+  charts.ndvi=new Chart($('#ndviChart').getContext('2d'),{
+    type:'line',
+    data:{labels:['Pre-fire','Post-fire','One year after'],datasets:[{label:'Mean NDVI',data:[null,null,null],borderColor:cssVar('--accent'),pointBackgroundColor:cssVar('--accent'),borderWidth:3,pointRadius:6,tension:.25,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{min:0,max:1,title:{display:true,text:'Mean NDVI'}}}}
+  });
+}
+
+function updateCharts(){
+  var sev=SEV_HA,reg=REG_HA;
+  if(chartsOK&&charts.sev){
+    charts.sev.data.datasets[0].data=sev;charts.sev.update();
+    charts.share.data.datasets[0].data=sev;
+    charts.share.data.datasets[0].borderColor=cssVar('--surface');
+    charts.share.update();
+    charts.reg.data.datasets[0].data=reg;charts.reg.update();
+    var p=numOrNaN(STUDY.meanNdviPre),q=numOrNaN(STUDY.meanNdviPost),r=numOrNaN(STUDY.meanNdviOneYear);
+    charts.ndvi.data.datasets[0].data=[isFinite(p)?p:null,isFinite(q)?q:null,isFinite(r)?r:null];
+    charts.ndvi.update();
+  }
+}
+
+/* ---------- interpretation ---------- */
+var lastText='';
+function interpret(){
+  var sev=SEV_HA,reg=REG_HA;
+  var tot=sum(sev),regTot=sum(reg);
+  var box=$('#interpBox'),paras=[],plain=[];
+  function P(html,flag){paras.push('<p'+(flag?' class="flag"':'')+'>'+html+'</p>');plain.push(html.replace(/<[^>]+>/g,''));}
+
+  if(tot<=0&&regTot<=0){
+    box.innerHTML='<p>Findings will be presented once the class areas are available.</p>';
+    lastText='';return;
+  }
+  var area=STUDY.areaName||'the study area';
+
+  if(tot>0){
+    var burned=sev[2]+sev[3]+sev[4]+sev[5];
+    var mh=sev[4]+sev[5];
+    var pctB=100*burned/tot;
+    var pctMH=burned>0?100*mh/burned:0;
+    var dom=2;for(var i=3;i<6;i++){if(sev[i]>sev[dom])dom=i;}
+    P('Of the <strong>'+ha(tot)+' ha</strong> analysed in '+area+', <strong>'+ha(burned)+' ha ('+pctB.toFixed(1)+'%)</strong> fall in dNBR classes of 0 or higher, indicating a decline in NBR between the pre-fire and post-fire composites. The most extensive affected class is <strong>'+SEV_NAMES[dom].toLowerCase()+'</strong> ('+ha(sev[dom])+' ha).');
+    if(burned>0){
+      var txt;
+      if(pctMH>=50) txt='More than half of the affected area ('+pctMH.toFixed(0)+'%) is in the moderate-high or high classes. This pattern is characteristic of fires that consumed most of the canopy and implies extensive patches of strong spectral change with a probable slow structural recovery.';
+      else if(pctMH>=25) txt='A substantial share of the affected area ('+pctMH.toFixed(0)+'%) is moderate-high or high severity, alongside a larger area of lighter burning. This indicates a mixed-severity fire producing a mosaic of heavily and lightly burned stands.';
+      else txt='Most of the affected area is in the low and low-moderate classes, with only '+pctMH.toFixed(0)+'% at moderate-high or high severity. This is consistent with a patchy or low-intensity burn, although dNBR alone cannot distinguish surface fire from crown fire.';
+      P(txt);
+    }
+    var lowShare=burned>0?100*sev[2]/burned:0;
+    if(lowShare>40) P('Because the custom low class starts at dNBR 0, and the USGS scheme treats values up to 0.10 as unburned, the low-severity area ('+ha(sev[2])+' ha) should be regarded as an upper estimate.',true);
+    var g=100*sev[0]/tot;
+    if(g>5) P(g.toFixed(1)+'% of the area has dNBR below −0.25 (increased greenness). This is not a fire effect and most likely reflects seasonal differences between the compositing periods, soil moisture or residual haze.',true);
+  }
+
+  if(regTot>0){
+    var good=reg[3]+reg[4];
+    var pg=100*good/regTot, pl=100*reg[2]/regTot, pn=100*(reg[0]+reg[1])/regTot, pd=100*reg[0]/regTot;
+    var r;
+    if(pg>=50) r='Early regrowth is strong: '+pg.toFixed(0)+'% of the area reached moderate or high recovery.';
+    else if(pg>=25) r='Recovery is spatially uneven: '+pg.toFixed(0)+'% of the area reached moderate or high recovery, while '+pl.toFixed(0)+'% is only at the low class.';
+    else r='Recovery after one year is limited: only '+pg.toFixed(0)+'% of the area reached moderate or high recovery, and '+pn.toFixed(0)+'% shows little or no gain or a decline.';
+    P(r+' First-year NDVI gains are commonly driven by grasses, herbs and resprouting shrubs and should not be equated with forest canopy recovery.');
+    if(pd>10) P(pd.toFixed(1)+'% of the area shows a negative ΔNDVI, which may indicate delayed mortality but may also arise from seasonal mismatch or residual cloud.',true);
+  }
+
+  var a=numOrNaN(STUDY.meanNdviPre),b=numOrNaN(STUDY.meanNdviPost),c=numOrNaN(STUDY.meanNdviOneYear);
+  if(isFinite(b)&&isFinite(c)){
+    var dd=c-b,t='Mean NDVI changed from '+b.toFixed(2)+' after the fire to '+c.toFixed(2)+' a year later (ΔNDVI '+(dd>=0?'+':'')+dd.toFixed(2)+')';
+    if(isFinite(a)&&a>b){
+      var rec=100*dd/(a-b);
+      t+='. Pre-fire mean NDVI was '+a.toFixed(2)+', so about <strong>'+Math.max(0,rec).toFixed(0)+'%</strong> of the NDVI lost to the fire had returned';
+      if(rec>100) t+=' (above 100% suggests a seasonal difference or a greener cover type than before)';
+    }
+    P(t+'.');
+  }
+  var dm=numOrNaN(STUDY.meanDnbr);
+  if(isFinite(dm)){
+    var cs=customSev(dm);
+    P('The mean dNBR of '+dm.toFixed(2)+' falls in the <strong>'+cs.name.toLowerCase()+'</strong> class of the custom scheme and in the USGS class <strong>'+usgsSev(dm).toLowerCase()+'</strong>. As a mean conceals spatial variability, it should be interpreted together with the class areas.');
+  }
+  P('These findings describe spectral change between satellite composites rather than field-measured fire effects, and they have not yet been validated against independent reference data.',true);
+
+  box.innerHTML=paras.join('');
+  lastText=plain.join('\n\n');
+}
+
+/* ---------- study details ---------- */
+function applyStudy(){
+  $$('.areaName').forEach(function(el){el.textContent=STUDY.areaName||'the study area';});
+  if(STUDY.author){
+    $('#byline').textContent='Prepared by '+STUDY.author;
+    $('#footAuthor').textContent='© '+new Date().getFullYear()+' '+STUDY.author+'. ';
+  }
+  $('#provNote').hidden=!!STUDY.final;
+  var hasNdvi=[STUDY.meanNdviPre,STUDY.meanNdviPost,STUDY.meanNdviOneYear].some(function(v){return isFinite(numOrNaN(v));});
+  if(!hasNdvi) $('#ndviCard').style.display='none';
+}
+
+/* ---------- init ---------- */
+if(!chartsOK){showChartFail();$("#sevSlider").addEventListener("input",updateHero);updateHero();}
+else{
+  chartTheme();
+  buildHero();
+  buildResultCharts();
+}
+applyStudy();
+updateCharts();
+interpret();
+
+/* ---------- animated type ---------- */
+(function(){
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce) return;
+  var hero=$('.hero h1');
+  var heads=$$('section.doc > header h2');
+  var all=(hero?[hero]:[]).concat(heads);
+  if(!all.length) return;
+
+  function build(el){
+    var text=el.textContent;
+    el.textContent='';
+    var sr=document.createElement('span');sr.className='sr';sr.textContent=text;
+    var wrap=document.createElement('span');wrap.setAttribute('aria-hidden','true');
+    var idx=0;
+    var words=text.split(' ');
+    words.forEach(function(word,wi){
+      var w=document.createElement('span');w.className='wd';
+      for(var i=0;i<word.length;i++){
+        var c=document.createElement('span');
+        c.className='ch';c.textContent=word.charAt(i);
+        c.style.setProperty('--i',idx++);
+        w.appendChild(c);
+      }
+      wrap.appendChild(w);
+      if(wi<words.length-1) wrap.appendChild(document.createTextNode(' '));
+    });
+    el.appendChild(sr);el.appendChild(wrap);
+    el.classList.add('split','pending');
+  }
+  // Fix every letter to its final width so the changing weight never reflows the text.
+  function lock(el){
+    var chs=$$('.ch',el);
+    chs.forEach(function(c){c.style.width='';});
+    var widths=chs.map(function(c){return c.getBoundingClientRect().width;});
+    chs.forEach(function(c,i){c.style.width=widths[i]+'px';});
+  }
+  function play(el){el.classList.remove('pending');el.classList.add('play');}
+
+  all.forEach(build);
+
+  var started=false;
+  function start(){
+    if(started) return;
+    started=true;
+    all.forEach(lock);
+    if(hero) play(hero);
+    if('IntersectionObserver' in window){
+      var io=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){play(e.target);io.unobserve(e.target);}
+        });
+      },{rootMargin:'0px 0px -10% 0px'});
+      heads.forEach(function(h){io.observe(h);});
+    }else{
+      heads.forEach(play);
+    }
+  }
+  var timer=setTimeout(start,2500);
+  if(document.fonts&&document.fonts.ready){
+    document.fonts.ready.then(function(){clearTimeout(timer);start();});
+  }
+  var rt;
+  window.addEventListener('resize',function(){
+    clearTimeout(rt);
+    rt=setTimeout(function(){if(started) all.forEach(lock);},200);
+  });
+})();
+
+/* ---------- nav highlight ---------- */
+(function(){
+  var links=$$('nav.sections a');
+  if(!('IntersectionObserver' in window)) return;
+  var map={};
+  links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(a){a.classList.remove('active');});
+        var a=map[e.target.id];if(a)a.classList.add('active');
+      }
+    });
+  },{rootMargin:'-30% 0px -60% 0px'});
+  Object.keys(map).forEach(function(id){var s=document.getElementById(id);if(s)io.observe(s);});
+})();
+
+})();
+</script>
+</body>
+</html>
